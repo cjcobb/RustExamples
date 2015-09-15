@@ -37,13 +37,13 @@ fn main() {
     				let mut buf : [u8; 128] = [0 ; 128]; 
     				//returns number of bytes, which we dont care about. but reads them into the buffer
     				let _ = stream.read(&mut buf).unwrap();
-    				//bytes to string conversion. This array of bytes has a bunch of zeroes though
-                    let lookup_str = str::from_utf8(&buf).unwrap();
-    				
-                    println!("message is {}, length of message is {}",&lookup_str[0..4], lookup_str.len());
 
-                    //need to throw out those zeroes
-                    let doc = doc ! {"key" => (&lookup_str[0..true_len(lookup_str)])};
+                    //parses the string out of the byte buffer
+                    let lookup_str : String = bytes_to_string(&buf);
+    				
+                    println!("message is {}, length of message is {}",lookup_str, lookup_str.len());
+
+                    let doc = doc ! {"key" => (lookup_str)};
 
                     //note the clone, so we dont run into problems with the borrower
                     let cursor = coll.find(Some(doc.clone()), None).ok().expect("failed to execute find");
@@ -75,6 +75,12 @@ fn main() {
     drop(listener);
 }
 
+//takes a buffer of bytes, some of which may be zero
+//returns the prefix of nonzero bytes, converted into a string of chars
+fn bytes_to_string(buf : &[u8]) -> String {
+    let bytes = str::from_utf8(&buf).unwrap();
+    bytes[0..true_len(bytes)].to_string()
+} 
 //finds the index of the last non null byte in a string
 fn true_len(x : &str) -> usize {
     let mut i = 0;
