@@ -1,0 +1,8 @@
+[package]
+name = "echo_server"
+version = "0.1.0"
+authors = ["CJ Cobb <charcobb@sas.upenn.edu>"]
+
+[dependencies]
+bson = "0.1.3"
+mongodb = "0.1.0"
