@@ -21,14 +21,19 @@ fn main() {
 
     let listener = TcpListener::bind("127.0.0.1:9999").unwrap();
 
+    //should have these outside of thread
+    let base_client = Client::connect("localhost",27017).ok().expect("Failed to initialize client");
     //this is just going to stay open forever, until we shut the server down
     for stream in listener.incoming() {
+        //create a new reference for this thread to capture
+        //props to sam rossi for this one
+        let client = base_client.clone();
     	match stream {
     		Ok(stream) => {
     			//this is not necessary, but just shows a pattern
-    			thread::spawn(|| {
-                    //should have these outside of thread
-                    let client = Client::connect("localhost",27017).ok().expect("Failed to initialize client");
+    			thread::spawn(move || {
+                    
+                
                     let coll = client.db("mydb").collection("coll1");
 
     				//makes the stream mutable
