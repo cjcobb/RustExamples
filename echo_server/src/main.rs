@@ -19,10 +19,12 @@ use mongodb::db::ThreadedDatabase;
 fn main() {
     println!("Starting server");
 
-    let listener = TcpListener::bind("127.0.0.1:9999").unwrap();
+    let listener = TcpListener::bind("0.0.0.0:9999").unwrap();
 
     //should have these outside of thread
     let base_client = Client::connect("localhost",27017).ok().expect("Failed to initialize client");
+    
+    println!("connected to db");
     //this is just going to stay open forever, until we shut the server down
     for stream in listener.incoming() {
         //create a new reference for this thread to capture
@@ -65,7 +67,8 @@ fn main() {
                             },
                             Err(_) => println!("Error fetching document"),
                         }
-                    }                    
+                    }
+		   response_msg.push_str("\n");                    
 
     				//send back the response
     				stream.write(response_msg.as_bytes()).unwrap();
