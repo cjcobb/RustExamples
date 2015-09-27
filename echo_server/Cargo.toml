@@ -6,3 +6,4 @@ authors = ["CJ Cobb <charcobb@sas.upenn.edu>"]
 [dependencies]
 bson = "0.1.3"
 mongodb = "0.1.0"
+threadpool = "0.1.4"
