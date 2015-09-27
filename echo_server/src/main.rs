@@ -1,27 +1,37 @@
 #[macro_use(bson, doc)]
 extern crate bson;
 extern crate mongodb;
+extern crate threadpool;
 
 use std::net::{TcpListener};
 use std::io::Write;
 use std::io::Read;
-use std::str;
-use std::thread;
 
+use std::str;
 use std::string::String;
+
+use threadpool::ThreadPool;
 
 use bson::Bson;
 use mongodb::{Client,ThreadedClient};
 use mongodb::db::ThreadedDatabase;
 
+const NUM_THREADS : usize = 50;
+const HOST : &'static str = "0.0.0.0:9999";
+
 
 //Send a key, receive all values associated with a given key in the mongo collection mydb.coll1 running on local machine
 fn main() {
+
+
+    let pool = ThreadPool::new(NUM_THREADS);
+    
     println!("Starting server");
 
-    let listener = TcpListener::bind("0.0.0.0:9999").unwrap();
+    //starts listening
+    let listener = TcpListener::bind(HOST).unwrap();
 
-    //should have these outside of thread
+    //connects to db
     let base_client = Client::connect("localhost",27017).ok().expect("Failed to initialize client");
     
     println!("connected to db");
@@ -32,12 +42,9 @@ fn main() {
         let client = base_client.clone();
     	match stream {
     		Ok(stream) => {
-    			//this is not necessary, but just shows a pattern
-    			thread::spawn(move || {
-                    
-                
+    			//hand off to thread pool. Thread pool handles request queueing if all threads are busy
+    			pool.execute(move || { 
                     let coll = client.db("mydb").collection("coll1");
-
     				//makes the stream mutable
     				let mut stream = stream;
     				//a mutable buffer to write the bytes into
@@ -48,12 +55,11 @@ fn main() {
                     //parses the string out of the byte buffer
                     let lookup_str : String = bytes_to_string(&buf);
     				
-                    println!("message is {}, length of message is {}",lookup_str, lookup_str.len());
+                    println!("message is {}",lookup_str);
 
                     let doc = doc ! {"key" => (lookup_str)};
 
-                    //note the clone, so we dont run into problems with the borrower
-                    let cursor = coll.find(Some(doc.clone()), None).ok().expect("failed to execute find");
+                    let cursor = coll.find(Some(doc), None).ok().expect("failed to execute find");
 
                     //get all the values associated with a given key
                     let mut response_msg : String = "".to_string();
@@ -68,7 +74,7 @@ fn main() {
                             Err(_) => println!("Error fetching document"),
                         }
                     }
-		   response_msg.push_str("\n");                    
+		            response_msg.push_str("\n");                    
 
     				//send back the response
     				stream.write(response_msg.as_bytes()).unwrap();
@@ -76,12 +82,17 @@ fn main() {
     			});
     		}
     		Err(_) => {
-    			println!("fuck");
+    			println!("bad socket stream");
     		}
     	}
     }
     drop(listener);
 }
+//not needed but kept for reference
+/*fn block_and_retrieve(mutex : &Arc<Mutex<VecDeque<TcpStream>>>) -> Option<TcpStream> {
+    let mut vec = mutex.lock().unwrap();
+    vec.pop_front()
+}*/
 
 //takes a buffer of bytes, some of which may be zero
 //returns the prefix of nonzero bytes, converted into a string of chars
